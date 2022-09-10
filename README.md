@@ -19,7 +19,7 @@ wlan.active(True)
 wlan.connect("Wi-Fi AP", "PASSWORD")
 
 import upip
-upip.install(‘umqtt.simple’)
+upip.install('umqtt.simple')
 ```
 
 ### Use

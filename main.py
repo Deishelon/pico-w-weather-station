@@ -7,12 +7,9 @@ from umqtt.simple import MQTTClient
 import dht
 import urequests
 import wifi_config
+import mqtt_config
 
-MQTT_HW_ID = "picoOutside"
-MQTT_ZONE_ID = "outside"
-MQTT_CLIENT_ID = "pico-temp-mqtt-outside"
-MQTT_HOST_NAME = "mqtt.home"
-
+# Change this GPIO PIN where your DHT22 sensor is connected
 DHT_22_GPIO_PIN = 28
 
 def read_cpu_temp():
@@ -26,16 +23,26 @@ def read_cpu_temp():
         The first step in converting the 16-bit temperature is to convert it back to volts, which is done based on the 3.3 V maximum voltage used by the Pico board.
         ref: https://how2electronics.com/read-temperature-sensor-value-from-raspberry-pi-pico/
     """
-    cpu_temp_conversion_factor = 3.3 / (65535)
+    cpu_temp_conversion_factor = 3.3 / 65535
     cpu_temp_sensor = machine.ADC(4)
     reading = cpu_temp_sensor.read_u16() * cpu_temp_conversion_factor
-    temperature_c = 27 - (reading - 0.706)/0.001721
+    temperature_c = 27 - (reading - 0.706) / 0.001721
     return temperature_c
 
 def read_vsys():
+    # Set pin 29 for the voltage reading
+    # Note, this will break Wi-Fi until the pin is set back to original state
+    # See lines below where the state is reset
+    Pin(29, Pin.IN)
     Vsys = machine.ADC(3)
-    conversion_factor = 3.3 / (65535)
+    conversion_factor = 3.3 * 3 / 65535
     reading = Vsys.read_u16() * conversion_factor
+
+    # Reset pin back to the original state
+    # This original state is found by printing the value of the pin at the start of this function
+    # alt=7 seems to be Wi-Fi related, so
+    Pin(29, Pin.ALT, Pin.PULL_DOWN, alt=7)
+
     return reading
 
 def read_dht_22_raw(sensor):
@@ -152,7 +159,7 @@ def main():
     rp2.country('NZ')
     wlan = network.WLAN(network.STA_IF)
     
-    mqtt_client = MQTTClient(MQTT_CLIENT_ID, MQTT_HOST_NAME)
+    mqtt_client = MQTTClient(mqtt_config.MQTT_CLIENT_ID, mqtt_config.MQTT_HOST_NAME)
 
     sensor = dht.DHT22(Pin(DHT_22_GPIO_PIN))
     
@@ -189,8 +196,8 @@ def main():
         debug_str = "None"
         if dht22_reading is not None:
             temp,hum = dht22_reading
-            mqtt_client.publish("m/v1/home/{}/0/temperature".format(MQTT_ZONE_ID), str(temp), retain=True)
-            mqtt_client.publish("m/v1/home/{}/0/humidity".format(MQTT_ZONE_ID), str(hum), retain=True)
+            mqtt_client.publish("m/v1/home/{}/0/temperature".format(mqtt_config.MQTT_ZONE_ID), str(temp), retain=True)
+            mqtt_client.publish("m/v1/home/{}/0/humidity".format(mqtt_config.MQTT_ZONE_ID), str(hum), retain=True)
             debug_str = "{} ; {}".format(temp, hum,)
         
         cpu_temp = read_cpu_temp()
@@ -199,9 +206,9 @@ def main():
         print("{} ; CPU: {} ; Vsys: {}".format(debug_str, cpu_temp, vsys_volts))
         
         # HW Info
-        mqtt_client.publish("m/v1/hw/{}/cpu/temperature".format(MQTT_HW_ID), str(cpu_temp), retain=True)
-        mqtt_client.publish("m/v1/hw/{}/vsys/voltage".format(MQTT_HW_ID), str(vsys_volts), retain=True)
-        mqtt_client.publish("m/v1/hw/{}/wlan/info".format(MQTT_HW_ID), str(ifconfig), retain=True)
+        mqtt_client.publish("m/v1/hw/{}/cpu/temperature".format(mqtt_config.MQTT_HW_ID), str(cpu_temp), retain=True)
+        mqtt_client.publish("m/v1/hw/{}/vsys/voltage".format(mqtt_config.MQTT_HW_ID), str(vsys_volts), retain=True)
+        mqtt_client.publish("m/v1/hw/{}/wlan/info".format(mqtt_config.MQTT_HW_ID), str(ifconfig), retain=True)
         
         print("Killing the MQTT Connection")
         mqtt_client.disconnect()

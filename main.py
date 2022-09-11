@@ -122,7 +122,7 @@ def wlan_up(wlan):
     
     ifconfig = wlan.ifconfig()
     print(ifconfig)
-    print("Conneted to Wifi")
+    print("Connected to Wifi")
     return ifconfig
     
 def led_error_code(led, error_code: int):
@@ -155,7 +155,7 @@ def led_error_code(led, error_code: int):
 def main():
     print("Start up")
 
-    # Set WiFi Country
+    # Set Wi-Fi Country
     rp2.country('NZ')
     wlan = network.WLAN(network.STA_IF)
     

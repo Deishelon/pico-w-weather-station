@@ -172,6 +172,8 @@ def main():
 
     while True:
         led.value(False)
+        # Read vsys before doing any WiFi connections makes the board more stable over long runs
+        vsys_volts = read_vsys()
         try:
             ifconfig = wlan_up(wlan)
         except Exception as e:
@@ -201,7 +203,6 @@ def main():
             debug_str = "{} ; {}".format(temp, hum,)
         
         cpu_temp = read_cpu_temp()
-        vsys_volts = read_vsys()
         
         print("{} ; CPU: {} ; Vsys: {}".format(debug_str, cpu_temp, vsys_volts))
         
